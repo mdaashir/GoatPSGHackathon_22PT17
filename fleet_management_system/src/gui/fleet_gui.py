@@ -24,11 +24,23 @@ class FleetGUI:
         for v in self.graph.vertices:
             pygame.draw.circle(self.screen, GREEN, self.graph.vertices[v], 5)
 
+    def draw_robots(self):
+        for robot in self.robots:
+            color = RED if robot.status == "waiting" else GREEN
+            pygame.draw.circle(self.screen, color, self.graph.vertices[robot.current_position], 10)
+
     def run(self):
         running = True
+        clock = pygame.time.Clock()
+
         while running:
+            self.screen.fill(WHITE)
             self.draw_graph()
+            self.draw_robots()
+
             pygame.display.flip()
+            clock.tick(30)
+            
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False

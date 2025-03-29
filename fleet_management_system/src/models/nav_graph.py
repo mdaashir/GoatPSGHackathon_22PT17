@@ -8,9 +8,10 @@ class NavGraph:
             data = json.load(file)
 
         self.graph = nx.Graph()
-        self.vertices = {i: tuple(v[:2]) for i, v in enumerate(data["vertices"])}
+        level_data = data["levels"]["level1"]
+        self.vertices = {i: tuple(v[:2]) for i, v in enumerate(level_data["vertices"])}
 
-        for edge in data["lanes"]:
+        for edge in level_data["lanes"]:
             self.graph.add_edge(edge[0], edge[1])
 
     def get_neighbors(self, node):
