@@ -7,6 +7,10 @@ WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 GREEN = (0, 255, 0)
 RED = (255, 0, 0)
+SCALE = 50
+OFFSET_X = 400
+OFFSET_Y = HEIGHT - 100
+
 
 class FleetGUI:
     def __init__(self, json_path):
@@ -40,19 +44,27 @@ class FleetGUI:
 
     def draw_graph(self):
         for start, neighbors in self.graph.edges.items():
-            x1, y1 = self.transform_coords(*self.graph.vertices[start])
+            x1, y1 = self.graph.vertices[start]
             for end in neighbors:
-                x2, y2 = self.transform_coords(*self.graph.vertices[end])
-                pygame.draw.line(self.screen, BLACK, (x1, y1), (x2, y2), 2)
+                x2, y2 = self.graph.vertices[end]
+                pygame.draw.line(
+                    self.screen,
+                    BLACK,
+                    (x1 * SCALE + OFFSET_X, -y1 * SCALE + OFFSET_Y),
+                    (x2 * SCALE + OFFSET_X, -y2 * SCALE + OFFSET_Y),
+                    2,
+                )
 
         for node, (x, y) in self.graph.vertices.items():
-            pygame.draw.circle(self.screen, GREEN, self.transform_coords(x, y), 8)
+            pygame.draw.circle(
+                self.screen, GREEN, (x * SCALE + OFFSET_X, -y * SCALE + OFFSET_Y), 8
+            )
 
     def draw_robots(self):
         for robot in self.robots:
             x, y = self.transform_coords(*self.graph.vertices[robot.current_position])
             color = RED if robot.status == "waiting" else GREEN
-            pygame.draw.circle(self.screen, color, (x, y), 10)
+            pygame.draw.circle(self.screen, color, (x * SCALE, HEIGHT - (y * SCALE)), 10)
 
     def run(self):
         running = True
@@ -65,14 +77,19 @@ class FleetGUI:
 
             pygame.display.flip()
             clock.tick(30)
-            
+
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
-                if event.type == pygame.MOUSEBUTTONDOWN:
+                elif event.type == pygame.MOUSEBUTTONDOWN:
                     x, y = event.pos
-                    for v, pos in self.graph.vertices.items():
-                        if abs(pos[0] - x) < 10 and abs(pos[1] - y) < 10:
+                    closest_node = min(
+                        self.graph.vertices,
+                        key=lambda n: (self.graph.vertices[n][0] - x) ** 2
+                        + (self.graph.vertices[n][1] - y) ** 2,
+                    )
+                    for v, (nx, ny) in self.graph.vertices.items():
+                        if abs(nx * SCALE - x) < 10 and abs(HEIGHT - (ny * SCALE) - y) < 10:
                             self.robots.append(Robot(v))
 
         pygame.quit()

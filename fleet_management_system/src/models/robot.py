@@ -8,8 +8,18 @@ class Robot:
         self.id = robot_id
         self.current_position = start_position
         self.graph = graph
-        self.path = []
-        self.status = "idle"
+        self.path = []  # Store path here
+        self.status = "waiting"
+
+    def move_to(self, destination):
+        path = self.graph.shortest_path(self.current_position, destination)
+        if path:
+            self.current_position = path[1]  # Move to the next node in the path
+        if destination in self.graph.edges[self.current_position]:
+            self.current_position = destination
+            self.status = "moving"
+        else:
+            self.status = "waiting"
 
     def assign_task(self, target_vertex):
         self.path = a_star_search(self.graph, self.current_position, target_vertex)

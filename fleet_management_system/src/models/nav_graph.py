@@ -1,20 +1,17 @@
 import json
 
 class NavGraph:
-    def __init__(self, file_path):
-        with open(file_path, "r") as file:
+    def __init__(self, json_path):
+        with open(json_path, "r") as file:
             data = json.load(file)
 
-        self.vertices = {}
-        self.edges = {}
-
         level_data = data["levels"]["level1"]
-        for i, (x, y, meta) in enumerate(level_data["vertices"]):
-            self.vertices[i] = (x, y)
+        self.vertices = {i: (v[0], v[1]) for i, v in enumerate(level_data["vertices"])}
+        self.edges = {i: [] for i in range(len(self.vertices))}
 
-        for start, end, meta in level_data["lanes"]:
-            speed_limit = meta["speed_limit"]
-            self.add_edge(start, end, speed_limit)
+        for edge in level_data["lanes"]:
+            start, end, _ = edge
+            self.edges[start].append(end)
 
     def add_edge(self, u, v, speed_limit):
         # Add bidirectional edge with a speed limit.
