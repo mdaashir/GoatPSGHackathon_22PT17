@@ -4,19 +4,19 @@ from fleet_management_system.src.utils.helpers import a_star_search
 
 
 class Robot:
-    def __init__(self, start_vertex):
-        self.path = None
-        self.id = uuid.uuid4().hex[:6]
-        self.current_position = start_vertex
-        self.target = None
+    def __init__(self, robot_id, start_position, graph):
+        self.id = robot_id
+        self.current_position = start_position
+        self.graph = graph
+        self.path = []
         self.status = "idle"
 
-    def assign_task(self, target_vertex, graph):
-        self.path = a_star_search(graph, self.current_position, target_vertex)
+    def assign_task(self, target_vertex):
+        self.path = a_star_search(self.graph, self.current_position, target_vertex)
         if self.path:
             self.status = "moving"
 
-    def move(self, next_position, traffic_manager):
+    def move(self, traffic_manager):
         # Move robot based on A* path while avoiding collisions.
         if self.path and self.status == "moving":
             next_pos = self.path[0]
@@ -30,4 +30,4 @@ class Robot:
             else:
                 self.status = "waiting"
         with open(LOG_PATH / "fleet_logs.txt", "a") as log:
-            log.write(f"Robot {self.id} moved to {next_position}\n")
+            log.write(f"Robot {self.id} moved to {next_pos}\n")
