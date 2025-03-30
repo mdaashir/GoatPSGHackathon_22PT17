@@ -1,0 +1,6 @@
+2025-03-30 22:51:14,252 - INFO - Robot 1 added at position 4.
+2025-03-30 22:51:17,512 - WARNING - Attempted to assign task to unknown Robot ID 1.
+2025-03-30 22:51:21,482 - INFO - Robot 2 added at position 5.
+2025-03-30 22:51:23,065 - WARNING - Attempted to assign task to unknown Robot ID 1.
+2025-03-30 22:51:24,642 - INFO - Robot 3 added at position 0.
+2025-03-30 22:51:25,580 - WARNING - Attempted to assign task to unknown Robot ID 0.

@@ -1,4 +1,7 @@
 import pygame
+from fleet_management_system.src import LOG_PATH
+from fleet_management_system.src.controllers.fleet_manager import FleetManager
+from fleet_management_system.src.controllers.traffic_manager import TrafficManager
 from fleet_management_system.src.models.nav_graph import NavGraph
 from fleet_management_system.src.models.robot import Robot
 
@@ -7,9 +10,8 @@ WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 GREEN = (0, 255, 0)
 RED = (255, 0, 0)
-SCALE = 50
-OFFSET_X = 400
-OFFSET_Y = HEIGHT - 100
+YELLOW = (255, 255, 0)
+BLUE = (0, 0, 255)
 
 
 class FleetGUI:
@@ -18,31 +20,23 @@ class FleetGUI:
         self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
         pygame.display.set_caption("Fleet Management System")
         self.graph = NavGraph(json_path)
-        self.robots = [Robot(1, 0, self.graph)]
+        self.fleet_manager = FleetManager(self.graph)
+        self.traffic_manager = TrafficManager()
 
-        # Get min and max values for proper scaling
-        x_vals = [coord[0] for coord in self.graph.vertices.values()]
-        y_vals = [coord[1] for coord in self.graph.vertices.values()]
+        self.robots = [
+            Robot(i, start_node, self.graph)
+            for i, start_node in list(enumerate(self.graph.vertices.keys()))[:3]
+        ]
 
-        self.min_x, self.max_x = min(x_vals), max(x_vals)
-        self.min_y, self.max_y = min(y_vals), max(y_vals)
+        for robot in self.robots:
+            self.fleet_manager.register_robot(robot)
 
-        # Compute scaling factor to fit within window size
-        self.scale_x = WIDTH / (self.max_x - self.min_x + 1)
-        self.scale_y = HEIGHT / (self.max_y - self.min_y + 1)
-        self.scale = min(self.scale_x, self.scale_y) * 0.8  # Keep some margin
-
-        # Centering offset
-        self.offset_x = (WIDTH - (self.max_x - self.min_x) * self.scale) / 2
-        self.offset_y = (HEIGHT - (self.max_y - self.min_y) * self.scale) / 2
-
-    def transform_coords(self, x, y):
-        """ Convert world coordinates to screen coordinates """
-        screen_x = (x - self.min_x) * self.scale + self.offset_x
-        screen_y = HEIGHT - ((y - self.min_y) * self.scale + self.offset_y)  # Flip Y-axis
-        return int(screen_x), int(screen_y)
+        self.selected_robot = None
+        self.running = True  # Pause/Resume Control
+        self.robot_counter = 1  # Unique ID counter for new robots
 
     def draw_graph(self):
+        """Draws the navigation graph"""
         for start, neighbors in self.graph.edges.items():
             x1, y1 = self.graph.vertices[start]
             for end in neighbors:
@@ -50,23 +44,60 @@ class FleetGUI:
                 pygame.draw.line(
                     self.screen,
                     BLACK,
-                    (x1 * SCALE + OFFSET_X, -y1 * SCALE + OFFSET_Y),
-                    (x2 * SCALE + OFFSET_X, -y2 * SCALE + OFFSET_Y),
+                    (x1 * 50, -y1 * 50 + 500),
+                    (x2 * 50, -y2 * 50 + 500),
                     2,
                 )
 
         for node, (x, y) in self.graph.vertices.items():
-            pygame.draw.circle(
-                self.screen, GREEN, (x * SCALE + OFFSET_X, -y * SCALE + OFFSET_Y), 8
-            )
+            pygame.draw.circle(self.screen, GREEN, (x * 50, -y * 50 + 500), 8)
 
     def draw_robots(self):
+        """Draws robots on the screen"""
         for robot in self.robots:
-            x, y = self.transform_coords(*self.graph.vertices[robot.current_position])
-            color = RED if robot.status == "waiting" else GREEN
-            pygame.draw.circle(self.screen, color, (x * SCALE, HEIGHT - (y * SCALE)), 10)
+            x, y = self.graph.vertices[robot.current_position]
+            color = (
+                RED
+                if robot.status == "stuck"
+                else YELLOW if robot.status == "waiting" else GREEN
+            )
+            pygame.draw.circle(self.screen, color, (x * 50, -y * 50 + 500), 10)
+
+            # Draw robot ID for tracking
+            font = pygame.font.Font(None, 24)
+            text = font.render(f"R{robot.robot_id}", True, BLUE)
+            self.screen.blit(text, (x * 50 - 5, -y * 50 + 490))
+
+    def draw_status(self):
+        """Displays the status of all robots"""
+        font = pygame.font.Font(None, 24)
+        y_offset = 10
+        for robot in self.robots:
+            status_text = f"Robot {robot.robot_id}: {robot.status}"
+            text = font.render(status_text, True, BLACK)
+            self.screen.blit(text, (10, y_offset))
+            y_offset += 20
+
+    def get_closest_node(self, x, y):
+        """Finds the closest graph node to the clicked position."""
+        return min(self.graph.vertices, key=lambda v: (self.graph.vertices[v][0] * 50 - x) ** 2 + (self.graph.vertices[v][1] * 50 - y) ** 2)
+
+    def draw_logs(self):
+        """Displays logs dynamically in the GUI."""
+        font = pygame.font.Font(None, 20)
+        y_offset = 10
+        try:
+            with open(LOG_PATH / "fleet_logs.txt", "r") as log_file:
+                lines = log_file.readlines()[-5:]  # Show last 5 log entries
+                for line in lines:
+                    text_surface = font.render(line.strip(), True, (0, 0, 0))
+                    self.screen.blit(text_surface, (10, y_offset))
+                    y_offset += 20
+        except FileNotFoundError:
+            pass
 
     def run(self):
+        """Main loop for GUI interaction"""
         running = True
         clock = pygame.time.Clock()
 
@@ -74,22 +105,44 @@ class FleetGUI:
             self.screen.fill(WHITE)
             self.draw_graph()
             self.draw_robots()
-
+            self.draw_status()
+            self.draw_logs()
             pygame.display.flip()
             clock.tick(30)
 
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
+
                 elif event.type == pygame.MOUSEBUTTONDOWN:
                     x, y = event.pos
-                    closest_node = min(
-                        self.graph.vertices,
-                        key=lambda n: (self.graph.vertices[n][0] - x) ** 2
-                        + (self.graph.vertices[n][1] - y) ** 2,
-                    )
-                    for v, (nx, ny) in self.graph.vertices.items():
-                        if abs(nx * SCALE - x) < 10 and abs(HEIGHT - (ny * SCALE) - y) < 10:
-                            self.robots.append(Robot(v))
+                    closest_node = self.get_closest_node(x, y)
+
+                    if self.selected_robot is None:
+                        # Select Robot
+                        new_robot = Robot(self.robot_counter, closest_node, self.graph)
+                        self.robots.append(new_robot)
+                        self.fleet_manager.add_robot(new_robot)
+                        self.robot_counter += 1
+                        for robot in self.robots:
+                            if robot.current_position == closest_node:
+                                self.selected_robot = robot
+                                break
+                    else:
+                        # Assign Task
+                        self.fleet_manager.assign_task(
+                            self.selected_robot.robot_id, closest_node
+                        )
+                        self.selected_robot = None
+
+                elif event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_SPACE:
+                        # Pause/Resume system
+                        self.running = not self.running
+
+            # Move robots only if running
+            if self.running:
+                for robot in self.robots:
+                    robot.move(self.traffic_manager)
 
         pygame.quit()
