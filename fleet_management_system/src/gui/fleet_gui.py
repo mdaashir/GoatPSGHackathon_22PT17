@@ -1,4 +1,5 @@
 import pygame
+import logging
 from fleet_management_system.src import LOG_PATH
 from fleet_management_system.src.controllers.fleet_manager import FleetManager
 from fleet_management_system.src.controllers.traffic_manager import TrafficManager

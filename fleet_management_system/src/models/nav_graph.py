@@ -1,7 +1,5 @@
 import heapq
-import pygame
 import json
-
 
 class NavGraph:
     def __init__(self, json_path):
@@ -56,3 +54,25 @@ class NavGraph:
             current = came_from.get(current)
         path.reverse()
         return path if path[0] == start else []
+
+    def dijkstra(self, start, target):
+        """Finds the shortest path using Dijkstra’s Algorithm."""
+        queue = [(0, start, [])]  # (cost, current_node, path)
+        visited = set()
+
+        while queue:
+            cost, node, path = heapq.heappop(queue)
+
+            if node in visited:
+                continue
+            visited.add(node)
+            path = path + [node]
+
+            if node == target:
+                return path
+
+            for neighbor in self.edges.get(node, []):
+                if neighbor not in visited:
+                    heapq.heappush(queue, (cost + 1, neighbor, path))
+
+        return []  # No path found
